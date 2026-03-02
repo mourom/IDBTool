@@ -40,6 +40,24 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger('IDBTool')
 
 
+class BytesEncoder(json.JSONEncoder):
+    """自定义JSON编码器，处理bytes类型"""
+    def default(self, obj):
+        if isinstance(obj, bytes):
+            try:
+                return obj.decode('utf-8')
+            except UnicodeDecodeError:
+                return obj.hex()
+        return super().default(obj)
+
+
+def safe_json_dumps(obj, **kwargs):
+    """安全的JSON序列化函数，自动处理bytes类型"""
+    kwargs.setdefault('ensure_ascii', False)
+    kwargs.setdefault('cls', BytesEncoder)
+    return json.dumps(obj, **kwargs)
+
+
 class IDBTool:
     """IDB Tool 主类，整合了所有功能"""
     
@@ -814,7 +832,7 @@ class IDBTool:
             data['time_str'] = time_str  # 添加可读的时间字符串
             data['elapsed_time'] = current_time - start_time
             collected_data.append(data)
-            logger.info(f'采集到数据: {json.dumps(data, ensure_ascii=False)}')
+            logger.info(f'采集到数据: {safe_json_dumps(data)}')
         
         def gpu_callback(data):
             nonlocal gpu_data
@@ -1236,7 +1254,7 @@ def interactive_menu():
                 elif sub_choice == '3':
                     print("=== 获取设备信息 ===")
                     info = tool.get_device_info()
-                    print(json.dumps(info, ensure_ascii=False, indent=2))
+                    print(safe_json_dumps(info, ensure_ascii=False, indent=2))
                 else:
                     print("无效的选项，请重新输入")
             elif choice == '2':
@@ -1274,7 +1292,7 @@ def interactive_menu():
                         filter_type = filter_map.get(filter_choice, 'all')
                         
                         def callback(data):
-                            print(json.dumps(data, ensure_ascii=False))
+                            print(safe_json_dumps(data, ensure_ascii=False))
                         
                         print(f"开始监控系统整体性能（类型：{filter_type}），按 Ctrl+C 停止...")
                         try:
@@ -1284,7 +1302,7 @@ def interactive_menu():
                     elif system_sub_choice == '2':
                         print("=== 监控网络 ===")
                         def callback(data):
-                            print(json.dumps(data, ensure_ascii=False))
+                            print(safe_json_dumps(data, ensure_ascii=False))
                         
                         print("开始监控网络，按 Ctrl+C 停止...")
                         try:
@@ -1294,7 +1312,7 @@ def interactive_menu():
                     elif system_sub_choice == '3':
                         print("=== 监控 GPU ===")
                         def callback(data):
-                            print(json.dumps(data, ensure_ascii=False))
+                            print(safe_json_dumps(data, ensure_ascii=False))
                         
                         print("开始监控 GPU，按 Ctrl+C 停止...")
                         try:
@@ -1321,7 +1339,7 @@ def interactive_menu():
                             continue
                         
                         def callback(data):
-                            print(json.dumps(data, ensure_ascii=False))
+                            print(safe_json_dumps(data, ensure_ascii=False))
                         
                         print(f"开始监控应用性能（Bundle ID：{bundle_id}），按 Ctrl+C 停止...")
                         try:
@@ -1331,7 +1349,7 @@ def interactive_menu():
                     elif app_sub_choice == '2':
                         print("=== 监控 FPS ===")
                         def callback(data):
-                            print(json.dumps(data, ensure_ascii=False))
+                            print(safe_json_dumps(data, ensure_ascii=False))
                         
                         print("开始监控 FPS，按 Ctrl+C 停止...")
                         try:
@@ -1354,12 +1372,12 @@ def interactive_menu():
                         print("开始监控电池，按 Ctrl+C 停止...")
                         try:
                             def callback(data):
-                                print(json.dumps(data, ensure_ascii=False))
+                                print(safe_json_dumps(data, ensure_ascii=False))
                             
                             # 这里可以添加电池监控的实现
                             # 目前我们只是获取一次电池信息
                             battery_info = tool.get_battery_info()
-                            print(json.dumps(battery_info, ensure_ascii=False, indent=2))
+                            print(safe_json_dumps(battery_info, ensure_ascii=False, indent=2))
                             print("电池信息获取完成")
                         except KeyboardInterrupt:
                             print("监控已停止")
@@ -1450,7 +1468,7 @@ def interactive_menu():
                 elif sub_choice == '1':
                     print("=== 获取条件诱导器配置 ===")
                     config = tool.get_condition_inducer()
-                    print(json.dumps(config, ensure_ascii=False, indent=2))
+                    print(safe_json_dumps(config, ensure_ascii=False, indent=2))
                 elif sub_choice == '2':
                     print("=== 设置网络条件 ===")
                     print("请选择网络条件：")
@@ -1503,7 +1521,7 @@ def interactive_menu():
                     continue
                 elif sub_choice == '1':
                     def callback(data):
-                        print(json.dumps(data, ensure_ascii=False, indent=2))
+                        print(safe_json_dumps(data, ensure_ascii=False, indent=2))
                     print("开始监控应用状态变化，按 Ctrl+C 停止...")
                     try:
                         tool.start_app_notifications_monitor(callback)
@@ -1567,7 +1585,7 @@ def interactive_menu():
                     print("=== 获取GPU信息 ===")
                     info = tool.get_gpu_info()
                     if info:
-                        print(json.dumps(info, ensure_ascii=False, indent=2))
+                        print(safe_json_dumps(info, ensure_ascii=False, indent=2))
                     else:
                         print("获取GPU信息失败")
                 else:
@@ -1600,14 +1618,14 @@ def interactive_menu():
                     ipa_path = input("请输入 IPA 文件路径: ")
                     if ipa_path:
                         result = tool.install_app(ipa_path)
-                        print(json.dumps(result, ensure_ascii=False, indent=2))
+                        print(safe_json_dumps(result, ensure_ascii=False, indent=2))
                     else:
                         print("IPA 文件路径不能为空")
                 elif sub_choice == '3':
                     bundle_id = input("请输入应用的 Bundle ID: ")
                     if bundle_id:
                         result = tool.uninstall_app(bundle_id)
-                        print(json.dumps(result, ensure_ascii=False, indent=2))
+                        print(safe_json_dumps(result, ensure_ascii=False, indent=2))
                     else:
                         print("Bundle ID 不能为空")
                 elif sub_choice == '4':
@@ -1770,7 +1788,7 @@ if __name__ == '__main__':
                     print(f"UDID: {device.get('UniqueDeviceID')}, Name: {device.get('DeviceName')}")
             elif args.device_command == 'info':
                 info = tool.get_device_info()
-                print(json.dumps(info, ensure_ascii=False, indent=2))
+                print(safe_json_dumps(info, ensure_ascii=False, indent=2))
         
         elif args.command == 'app':
             if args.app_command == 'list':
@@ -1779,10 +1797,10 @@ if __name__ == '__main__':
                     print(f"Bundle ID: {app.get('CFBundleIdentifier')}, Name: {app.get('CFBundleDisplayName', app.get('CFBundleName'))}")
             elif args.app_command == 'install':
                 result = tool.install_app(args.ipa_path)
-                print(json.dumps(result, ensure_ascii=False, indent=2))
+                print(safe_json_dumps(result, ensure_ascii=False, indent=2))
             elif args.app_command == 'uninstall':
                 result = tool.uninstall_app(args.bundle_id)
-                print(json.dumps(result, ensure_ascii=False, indent=2))
+                print(safe_json_dumps(result, ensure_ascii=False, indent=2))
             elif args.app_command == 'launch':
                 pid = tool.launch_app(args.bundle_id)
                 print(f"应用已启动，PID: {pid}")
@@ -1792,7 +1810,7 @@ if __name__ == '__main__':
         
         elif args.command == 'monitor':
             def callback(data):
-                print(json.dumps(data, ensure_ascii=False))
+                print(safe_json_dumps(data, ensure_ascii=False))
             
             if args.monitor_command == 'system':
                 tool.start_system_monitor(callback, filter=args.filter)
@@ -1824,15 +1842,15 @@ if __name__ == '__main__':
         elif args.command == 'condition':
             if args.condition_command == 'get':
                 config = tool.get_condition_inducer()
-                print(json.dumps(config, ensure_ascii=False, indent=2))
+                print(safe_json_dumps(config, ensure_ascii=False, indent=2))
             elif args.condition_command == 'set':
                 result = tool.set_condition_inducer(args.condition_id, args.profile_id)
-                print(json.dumps(result, ensure_ascii=False, indent=2))
+                print(safe_json_dumps(result, ensure_ascii=False, indent=2))
         
         elif args.command == 'lifecycle':
             if args.lifecycle_command == 'notifications':
                 def callback(data):
-                    print(json.dumps(data, ensure_ascii=False, indent=2))
+                    print(safe_json_dumps(data, ensure_ascii=False, indent=2))
                 tool.start_app_notifications_monitor(callback)
             elif args.lifecycle_command == 'analyze':
                 tool.analyze_app_lifecycle(args.bundle_id)
@@ -1844,7 +1862,7 @@ if __name__ == '__main__':
                 tool.get_syslog(callback)
             elif args.system_command == 'battery':
                 info = tool.get_battery_info()
-                print(json.dumps(info, ensure_ascii=False, indent=2))
+                print(safe_json_dumps(info, ensure_ascii=False, indent=2))
             elif args.system_command == 'crash':
                 if args.action == 'list':
                     logs = tool.list_crash_logs()
